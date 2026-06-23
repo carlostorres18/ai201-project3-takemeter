@@ -1,0 +1,105 @@
+
+
+🎯 Baseline accuracy: 0.467  (evaluated on 15/15 parseable responses)
+
+Per-class metrics (baseline):
+              precision    recall  f1-score   support
+
+    analysis       0.50      0.40      0.44         5
+    hot_take       0.00      0.00      0.00         3
+    reaction       1.00      0.50      0.67         4
+        news       0.33      1.00      0.50         3
+
+    accuracy                           0.47        15
+   macro avg       0.46      0.47      0.40        15
+weighted avg       0.50      0.47      0.43        15
+
+based on this
+
+This is your model's performance using only the system prompt (zero-shot), before any fine-tuning. Think of it as "how well does Claude classify by instruction alone."
+
+  ---
+  Overall: 46.7% accuracy — correctly labeled 7 out of 15 posts. Slightly better than random chance (25% with 4 classes), but not by much.
+
+  ---
+  Per-class breakdown — what's actually happening:
+
+  ┌────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                 Label                  │                                                       What it means                                                        │
+  ├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ news — recall 1.00, precision 0.33     │ Found every real news post, but called everything news. It's over-predicting this class, stealing predictions from others. │
+  ├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ hot_take — F1 0.00                     │ Complete failure. The model never correctly identified a single hot_take. Likely mislabeling them as reaction or news.     │
+  ├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ reaction — precision 1.00, recall 0.50 │ When it says "reaction" it's always right, but it misses half the actual reactions (probably calling them something else). │
+  ├────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ analysis — F1 0.44                     │ Mediocre. Gets some right but confuses it with other labels.                                                               │
+  └────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  ---
+  The core problem: The model is defaulting toward news — it catches all 3 real news posts but also mislabels other posts as news. And it's essentially blind to hot_take, which makes sense
+  because that label requires cultural context about what the r/soccer community considers contrarian.
+
+  The macro F1 of 0.40 is the most honest number — it weights all four classes equally, so hot_take's 0.00 drags the average down despite decent reaction performance.
+
+  This baseline is actually useful: it tells you fine-tuning needs to focus hardest on teaching the model to distinguish hot_take from reaction.
+
+
+  After fine-tuning the model
+
+  Running inference on test set...
+
+
+🎯 Fine-tuned model accuracy: 0.267
+
+Per-class metrics (fine-tuned model):
+              precision    recall  f1-score   support
+
+    analysis       0.00      0.00      0.00         5
+    hot_take       0.00      0.00      0.00         3
+    reaction       0.27      1.00      0.42         4
+        news       0.00      0.00      0.00         3
+
+    accuracy                           0.27        15
+   macro avg       0.07      0.25      0.11        15
+weighted avg       0.07      0.27      0.11        15
+
+the 3 that i will analyze on why it got them wrong:
+
+--- #1 ---
+Text:      https://www.reddit.com/r/soccer/comments/1uc1cij/optastats_23_belgium_had_23_shots_vs_ir_iran/
+True:      analysis
+Predicted: reaction  (confidence: 0.27)
+
+--- #2 ---
+Text:      https://www.reddit.com/r/soccer/comments/1ucfkos/do_the_new_world_cup_tiebreaker_rules_make_the/
+True:      hot_take
+Predicted: reaction  (confidence: 0.27)
+
+--- #3 ---
+Text:      https://www.reddit.com/r/soccer/comments/1ubdpyx/espn_fc_history_for_cura%C3%A7ao_as_they_earn_their/
+True:      analysis
+Predicted: reaction  (confidence: 0.27)
+
+
+comparison zero-shot vs fine-tuned model
+
+
+
+==================================================
+RESULTS COMPARISON
+==================================================
+Model                               Accuracy
+---------------------------------------------
+Zero-shot baseline (Groq)              0.467
+Fine-tuned DistilBERT                  0.267
+---------------------------------------------
+
+Fine-tuning regression: 0.200
+
+Use these numbers in your README evaluation report.
+
+
+what i need to write in the report:
+
+where did the baseline struggle? Are there specific labels it consistently confuses? Write down your hypothesis — you'll test it after fine-tuning.
